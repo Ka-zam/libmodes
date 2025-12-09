@@ -1,4 +1,10 @@
+# Build artifacts
 *.o
+*.a
+*.so
+build/
+
+# Test outputs
 tests/fixtures
 tests/test
 tests/results

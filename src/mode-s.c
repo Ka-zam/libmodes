@@ -1,4 +1,5 @@
 #include "mode-s.h"
+#include <time.h>
 
 #define MODE_S_PREAMBLE_US 8       // microseconds
 #define MODE_S_LONG_MSG_BITS 112
@@ -714,6 +715,7 @@ good_preamble:
 
       // Decode the received message
       mode_s_decode(self, &mm, msg);
+      mm.sample_offset = j;  // Record preamble detection position
 
       // Skip this message if we are sure it's fine.
       if (mm.crcok) {
@@ -738,3 +740,31 @@ good_preamble:
     }
   }
 }
+
+// 2.4MHz demodulator wrapper functions
+#ifdef LIBMODES_2400
+#include "demod_2400.h"
+#include "icao_filter.h"
+
+void mode_s_init_2400(mode_s_t *self) {
+  demod_2400_config_t config;
+  config.nfix_crc = self->nfix_crc > 0 ? self->nfix_crc : 1;
+  config.fix_df = self->fix_df;
+  config.enable_df24 = 0;  // Not exposed yet
+  demod_2400_init(&config);
+}
+
+void mode_s_detect_2400(mode_s_t *self, uint16_t *mag, uint32_t maglen,
+                        uint64_t timestamp_ms, mode_s_callback_t cb) {
+  // Expire old ICAO cache entries
+  icaoFilterExpire(timestamp_ms);
+
+  // Process samples with the 2.4MHz demodulator
+  demod_2400_process(mag, maglen, 0, self, cb, NULL);
+}
+
+void mode_s_compute_magnitude_vector_2400(unsigned char *data, uint16_t *mag, uint32_t size) {
+  // Same implementation as 2MHz - the magnitude computation is the same
+  mode_s_compute_magnitude_vector(data, mag, size);
+}
+#endif

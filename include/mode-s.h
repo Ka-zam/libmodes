@@ -10,6 +10,7 @@
 
 #define MODE_S_ICAO_CACHE_LEN 1024 // Power of two required
 #define MODE_S_LONG_MSG_BYTES (112/8)
+#define MODE_S_SHORT_MSG_BYTES (56/8)
 #define MODE_S_UNIT_FEET 0
 #define MODE_S_UNIT_METERS 1
 
@@ -22,6 +23,11 @@ typedef struct {
   int fix_errors; // Single bit error correction if true
   int aggressive; // Aggressive detection algorithm
   int check_crc;  // Only display messages with good CRC
+
+  // 2.4MHz demodulator configuration (when use_2400 is set)
+  int use_2400;   // 0 = legacy 2MHz demod (default), 1 = 2.4MHz oversampling demod
+  int nfix_crc;   // Max bit errors to correct (0, 1, or 2) - for 2.4MHz mode
+  int fix_df;     // Allow correction of DF field bits - for 2.4MHz mode
 } mode_s_t;
 
 // The struct we use to store information about a decoded message
@@ -35,6 +41,7 @@ struct mode_s_msg {
   int errorbit;               // Bit corrected. -1 if no bit corrected.
   int aa1, aa2, aa3;          // ICAO Address bytes 1 2 and 3
   int phase_corrected;        // True if phase correction was applied.
+  uint32_t sample_offset;     // Sample index where preamble was detected
 
   // DF 11
   int ca;                     // Responder capabilities.
@@ -71,9 +78,30 @@ struct mode_s_msg {
 
 typedef void (*mode_s_callback_t)(mode_s_t *self, struct mode_s_msg *mm);
 
+// Legacy 2MHz demodulator API
 void mode_s_init(mode_s_t *self);
 void mode_s_compute_magnitude_vector(unsigned char *data, uint16_t *mag, uint32_t size);
 void mode_s_detect(mode_s_t *self, uint16_t *mag, uint32_t maglen, mode_s_callback_t);
 void mode_s_decode(mode_s_t *self, struct mode_s_msg *mm, unsigned char *msg);
+
+// 2.4MHz demodulator API (when LIBMODES_2400 is defined)
+#ifdef LIBMODES_2400
+#include "demod_2400.h"
+
+// Initialize the 2.4MHz demodulator subsystem
+// Call this after mode_s_init() if self->use_2400 is set
+void mode_s_init_2400(mode_s_t *self);
+
+// Process 2.4MHz magnitude samples
+// mag: magnitude vector (16-bit, must have maglen + 289 samples)
+// maglen: number of valid samples to process
+// timestamp_ms: current timestamp in milliseconds (for ICAO cache expiry)
+void mode_s_detect_2400(mode_s_t *self, uint16_t *mag, uint32_t maglen,
+                        uint64_t timestamp_ms, mode_s_callback_t cb);
+
+// Compute magnitude vector for 2.4MHz samples
+// Same as mode_s_compute_magnitude_vector but documented for 2.4MHz use
+void mode_s_compute_magnitude_vector_2400(unsigned char *data, uint16_t *mag, uint32_t size);
+#endif
 
 #endif
