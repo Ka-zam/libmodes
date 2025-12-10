@@ -7,9 +7,10 @@ project(libmodes C)
 # Option to enable 2.4MHz demodulator (default: ON)
 option(LIBMODES_2400 "Enable 2.4MHz oversampling demodulator from dump1090-fa" ON)
 
-# Core source files (legacy 2MHz demodulator)
+# Core source files (legacy 2MHz demodulator + unified API)
 set(LIBMODES_SOURCES
     src/mode-s.c
+    src/decoder_api.c
 )
 
 # Additional source files for 2.4MHz demodulator
