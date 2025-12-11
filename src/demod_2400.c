@@ -599,6 +599,7 @@ void demod_2400_process(uint16_t *m, uint32_t mlen,
             // Phase info
             mm.phase_corrected = 0;
             mm.errorbit = -1;
+            mm.sample_offset = j;  // Record preamble detection position
 
             // Count accepted messages
             if (stats) {
